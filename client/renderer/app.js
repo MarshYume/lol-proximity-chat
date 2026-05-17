@@ -12,6 +12,16 @@ const RTC_CONFIG = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    // Serveur TURN gratuit (relais si connexion directe impossible via NAT)
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turns:openrelay.metered.ca:443',
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
 };
 
@@ -40,10 +50,12 @@ const btnMute      = document.getElementById('btn-mute');
 const btnLeave     = document.getElementById('btn-leave');
 const roomLabel    = document.getElementById('room-label');
 const playerList   = document.getElementById('player-list');
-const btnDebug     = document.getElementById('btn-debug');
-const debugPanel   = document.getElementById('debug-panel');
-const debugOutput  = document.getElementById('debug-output');
-const btnDebugClose = document.getElementById('btn-debug-close');
+const btnDebug          = document.getElementById('btn-debug');
+const debugPanel        = document.getElementById('debug-panel');
+const debugOutput       = document.getElementById('debug-output');
+const btnDebugClose     = document.getElementById('btn-debug-close');
+const audioInputSelect  = document.getElementById('audio-input-select');
+const btnRefreshDevices = document.getElementById('btn-refresh-devices');
 
 // ── LoL Live Client API ───────────────────────────────────────
 let lastGameData = null;
@@ -83,7 +95,10 @@ function getDistance(pos1, pos2) {
 }
 
 function calculateVolume(targetTeam, targetPosition) {
-  const isAlly = myTeam && targetTeam === myTeam;
+  // Pas en partie (LoL offline ou lobby) → plein volume pour tout le monde
+  if (!myTeam) return 1.0;
+
+  const isAlly = targetTeam === myTeam;
 
   // Fallback : pas de coordonnées disponibles (API retourne "NONE")
   // → volume plein pour les alliés, muet pour les ennemis
@@ -97,16 +112,53 @@ function calculateVolume(targetTeam, targetPosition) {
   return Math.max(0, 1 - dist / maxRange);
 }
 
+// ── Périphériques audio ───────────────────────────────────────
+async function populateAudioDevices() {
+  try {
+    // Demande une permission temporaire pour obtenir les labels des périphériques
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+    tmp.getTracks().forEach(t => t.stop());
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs  = devices.filter(d => d.kind === 'audioinput');
+
+    const currentVal = audioInputSelect.value;
+    audioInputSelect.innerHTML = '';
+
+    inputs.forEach((device, i) => {
+      const opt   = document.createElement('option');
+      opt.value   = device.deviceId;
+      opt.textContent = device.label || `Microphone ${i + 1}`;
+      audioInputSelect.appendChild(opt);
+    });
+
+    // Restaure la sélection précédente si elle existe encore
+    if (currentVal && [...audioInputSelect.options].some(o => o.value === currentVal)) {
+      audioInputSelect.value = currentVal;
+    }
+  } catch (e) {
+    const opt = document.createElement('option');
+    opt.textContent = 'Microphone par défaut';
+    audioInputSelect.appendChild(opt);
+  }
+}
+
 // ── Audio ─────────────────────────────────────────────────────
 async function initAudio() {
-  localStream  = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  const deviceId   = audioInputSelect.value;
+  const audioConstraint = deviceId
+    ? { deviceId: { exact: deviceId } }
+    : true;
+
+  localStream  = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint, video: false });
   audioContext = new AudioContext();
 }
 
 function setupRemoteAudio(socketId, remoteStream) {
   const source   = audioContext.createMediaStreamSource(remoteStream);
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0; // muet par défaut jusqu'à la 1ère mise à jour de position
+  // Volume plein par défaut — sera ajusté dès la 1ère mise à jour de position
+  gainNode.gain.value = 1.0;
   source.connect(gainNode);
   gainNode.connect(audioContext.destination);
 
@@ -155,9 +207,14 @@ async function createPeerConnection(targetId, initiator) {
   };
 
   pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-      removePeer(targetId);
+    const state = pc.connectionState;
+    const volEl = document.getElementById(`vol-${targetId}`);
+    if (volEl) {
+      if (state === 'connecting' || state === 'new')      volEl.textContent = '…';
+      else if (state === 'connected')                     volEl.textContent = '🔗';
+      else if (state === 'failed' || state === 'closed')  volEl.textContent = '✗';
     }
+    if (state === 'failed' || state === 'closed') removePeer(targetId);
   };
 
   if (initiator) {
@@ -238,6 +295,16 @@ function connectSocket(roomCode, summonerName) {
   socket.on('disconnect', () => {
     console.log('Déconnecté du serveur');
   });
+
+  // Heartbeat toutes les 2s pour maintenir les volumes à jour même sans LoL actif
+  const heartbeatInterval = setInterval(() => {
+    if (socket?.connected) {
+      socket.emit('position-update', { position: myPosition, team: myTeam });
+    }
+  }, 2000);
+
+  // Arrête le heartbeat si on quitte la room
+  socket.on('disconnect', () => clearInterval(heartbeatInterval));
 }
 
 // ── UI ────────────────────────────────────────────────────────
@@ -262,11 +329,14 @@ function updatePlayerUI(socketId, name, team, volume) {
   }
   const dot = document.getElementById(`dot-${socketId}`);
   const vol = document.getElementById(`vol-${socketId}`);
-  if (dot) dot.className = `dot ${team === 'ORDER' ? 'blue' : 'red'}`;
+  if (dot) dot.className = `dot ${team === 'ORDER' ? 'blue' : team === 'CHAOS' ? 'red' : 'unknown'}`;
   if (vol) vol.textContent = volume > 0 ? `${Math.round(volume * 100)}%` : '—';
 }
 
 // ── Événements boutons ────────────────────────────────────────
+// Peuple la liste des micros au démarrage
+populateAudioDevices();
+
 btnJoin.addEventListener('click', async () => {
   const name = summonerInput.value.trim();
   const code = roomCodeInput.value.trim().toUpperCase();
@@ -311,6 +381,8 @@ btnDebug.addEventListener('click', () => {
 btnDebugClose.addEventListener('click', () => {
   debugPanel.classList.add('hidden');
 });
+
+btnRefreshDevices.addEventListener('click', () => populateAudioDevices());
 
 btnLeave.addEventListener('click', () => {
   socket?.disconnect();

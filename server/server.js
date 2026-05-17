@@ -40,11 +40,10 @@ io.on('connection', (socket) => {
       p.position = position;
       p.team = team;
     }
-    // Diffuse les positions de tous les joueurs de la room
+    // Diffuse les positions de TOUS les joueurs de la room (même sans équipe connue)
     const positions = {};
     room.forEach((p, id) => {
-      // Inclut le joueur même sans position (on a au moins son équipe)
-      if (p.team) positions[id] = { name: p.name, team: p.team, position: p.position };
+      positions[id] = { name: p.name, team: p.team, position: p.position };
     });
     io.to(currentRoom).emit('positions-update', positions);
   });
