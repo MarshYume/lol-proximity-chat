@@ -40,27 +40,34 @@ const btnMute      = document.getElementById('btn-mute');
 const btnLeave     = document.getElementById('btn-leave');
 const roomLabel    = document.getElementById('room-label');
 const playerList   = document.getElementById('player-list');
+const btnDebug     = document.getElementById('btn-debug');
+const debugPanel   = document.getElementById('debug-panel');
+const debugOutput  = document.getElementById('debug-output');
+const btnDebugClose = document.getElementById('btn-debug-close');
 
 // ── LoL Live Client API ───────────────────────────────────────
+let lastGameData = null;
+
 ipcRenderer.on('lol-data', (_, gameData) => {
   lolStatus.textContent = '● LoL Running';
   lolStatus.className   = 'status online';
+  lastGameData = gameData;
 
-  if (!myName || !socket?.connected) return;
+  if (!socket?.connected) return;
 
-  // Trouve le joueur local dans la liste des 10 joueurs
-  const me = gameData.allPlayers?.find(p => p.summonerName === myName);
+  // Auto-détection du nom via l'API (évite les problèmes de caractères spéciaux)
+  const activeName = gameData.activePlayer?.summonerName;
+  if (!activeName) return;
+
+  const me = gameData.allPlayers?.find(p => p.summonerName === activeName);
   if (!me) return;
 
-  // NOTE : allPlayers[i].position est normalement un objet {x, y, z}
-  // représentant les coordonnées sur la carte LoL (vérifié dans l'API locale).
-  // Si tu vois une chaîne ("TOP", "MID"...) c'est que Riot a changé le schéma —
-  // dans ce cas il faudra trouver le bon champ dans la réponse JSON brute.
-  if (me.position && typeof me.position === 'object') {
-    myPosition = me.position;
-    myTeam     = me.team; // "ORDER" (bleus) ou "CHAOS" (rouges)
-    socket.emit('position-update', { position: myPosition, team: myTeam });
-  }
+  myTeam = me.team; // "ORDER" (bleus) ou "CHAOS" (rouges)
+
+  // position est {x,y,z} si disponible, sinon "NONE" ou une chaîne
+  myPosition = (me.position && typeof me.position === 'object') ? me.position : null;
+
+  socket.emit('position-update', { position: myPosition, team: myTeam });
 });
 
 ipcRenderer.on('lol-offline', () => {
@@ -76,8 +83,14 @@ function getDistance(pos1, pos2) {
 }
 
 function calculateVolume(targetTeam, targetPosition) {
-  if (!myPosition || !targetPosition || !myTeam) return 0;
-  const isAlly   = targetTeam === myTeam;
+  const isAlly = myTeam && targetTeam === myTeam;
+
+  // Fallback : pas de coordonnées disponibles (API retourne "NONE")
+  // → volume plein pour les alliés, muet pour les ennemis
+  if (!myPosition || !targetPosition || typeof targetPosition !== 'object') {
+    return isAlly ? 1.0 : 0;
+  }
+
   const maxRange = isAlly ? ALLY_MAX_RANGE : ENEMY_MAX_RANGE;
   const dist     = getDistance(myPosition, targetPosition);
   if (dist >= maxRange) return 0;
@@ -277,6 +290,26 @@ btnMute.addEventListener('click', () => {
   localStream?.getAudioTracks().forEach(t => (t.enabled = !isMuted));
   btnMute.textContent      = isMuted ? '🔇' : '🎤';
   btnMute.style.background = isMuted ? '#555' : '';
+});
+
+btnDebug.addEventListener('click', () => {
+  if (!lastGameData) {
+    debugOutput.textContent = 'Aucune donnée — lance LoL et rejoins une partie.';
+  } else {
+    // Affiche uniquement les données des joueurs pour voir le champ position
+    const players = lastGameData.allPlayers?.map(p => ({
+      summonerName: p.summonerName,
+      team: p.team,
+      position: p.position,
+      isDead: p.isDead
+    }));
+    debugOutput.textContent = JSON.stringify(players, null, 2);
+  }
+  debugPanel.classList.remove('hidden');
+});
+
+btnDebugClose.addEventListener('click', () => {
+  debugPanel.classList.add('hidden');
 });
 
 btnLeave.addEventListener('click', () => {
