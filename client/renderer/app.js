@@ -2,7 +2,7 @@ const { ipcRenderer } = require('electron');
 const io = require('socket.io-client');
 
 // ── Configuration ─────────────────────────────────────────────
-const SERVER_URL = 'http://localhost:3000';
+const SERVER_URL = 'https://lol-proximity-chat.onrender.com';
 
 // Portées de proximité en unités LoL (~14 800u = largeur totale de la map)
 const ALLY_MAX_RANGE  = 3000; // alliés audibles jusqu'à ~20% de la map
