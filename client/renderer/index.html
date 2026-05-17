@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>LoL Proximity Chat</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="header">
+    <span class="title">⚔ Proximity Chat</span>
+    <span id="lol-status" class="status offline">● LoL Offline</span>
+  </div>
+
+  <!-- Panel connexion -->
+  <div id="join-panel" class="panel">
+    <label>Ton pseudo LoL</label>
+    <input id="summoner-name" type="text" placeholder="ex: Faker" autocomplete="off" />
+    <label>Code de room</label>
+    <input id="room-code" type="text" placeholder="ex: ABC123" maxlength="8" autocomplete="off" />
+    <small>Partage ce code avec tes alliés avant la partie.</small>
+    <button id="btn-join">Rejoindre</button>
+  </div>
+
+  <!-- Panel room active -->
+  <div id="room-panel" class="panel hidden">
+    <div class="room-info">
+      <span>Room : <strong id="room-label"></strong></span>
+      <button id="btn-mute" class="icon-btn">🎤</button>
+    </div>
+
+    <div class="legend">
+      <span class="dot blue"></span> Alliés (3000u)
+      <span class="dot red" style="margin-left:12px"></span> Ennemis (800u)
+    </div>
+
+    <div id="player-list"></div>
+
+    <button id="btn-leave" class="leave-btn">Quitter la room</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

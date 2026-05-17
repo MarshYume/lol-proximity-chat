@@ -1,0 +1,168 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-size: 13px;
+  padding: 12px;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #21262d;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #c8a96e;
+  letter-spacing: 0.5px;
+}
+
+.status {
+  font-size: 11px;
+}
+.status.online  { color: #3fb950; }
+.status.offline { color: #f85149; }
+
+/* ── Panels ── */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.panel.hidden { display: none; }
+
+.panel label {
+  font-size: 11px;
+  color: #8b949e;
+  margin-bottom: -4px;
+}
+
+.panel small {
+  font-size: 11px;
+  color: #484f58;
+}
+
+/* ── Inputs ── */
+input {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  padding: 7px 10px;
+  font-size: 13px;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+input:focus {
+  outline: none;
+  border-color: #c8a96e;
+}
+
+/* ── Boutons ── */
+button {
+  background: #c8a96e;
+  color: #0d1117;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+button:hover { background: #d4b97e; }
+
+.icon-btn {
+  background: #21262d;
+  color: #c9d1d9;
+  padding: 5px 9px;
+  font-size: 15px;
+  border-radius: 6px;
+}
+.icon-btn:hover { background: #30363d; }
+
+.leave-btn {
+  background: #21262d;
+  color: #f85149;
+  margin-top: 4px;
+}
+.leave-btn:hover { background: #2d333b; }
+
+/* ── Room info ── */
+.room-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #8b949e;
+}
+.room-info strong { color: #c8a96e; }
+
+/* ── Légende portées ── */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #484f58;
+  padding: 4px 0;
+}
+
+/* ── Points de couleur équipe ── */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.dot.blue    { background: #388bfd; }
+.dot.red     { background: #f85149; }
+.dot.unknown { background: #484f58; }
+
+/* ── Liste joueurs ── */
+#player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 180px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+.player-item:hover { border-color: #30363d; }
+
+.player-name {
+  flex: 1;
+  font-size: 12px;
+  color: #c9d1d9;
+}
+
+.player-vol {
+  font-size: 11px;
+  color: #3fb950;
+  min-width: 32px;
+  text-align: right;
+}
