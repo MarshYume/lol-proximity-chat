@@ -1,12 +1,37 @@
 {
-  "name": "lol-proximity-chat-client",
+  "name": "lol-proximity-chat",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.lol.proximitychat",
+    "productName": "LoL Proximity Chat",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "installerLanguages": ["fr_FR"],
+      "language": "1036"
+    },
+    "files": [
+      "main.js",
+      "renderer/**/*",
+      "node_modules/**/*"
+    ]
   },
   "dependencies": {
-    "electron": "^27.1.0",
     "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "electron": "^27.1.0",
+    "electron-builder": "^24.9.1"
   }
 }
